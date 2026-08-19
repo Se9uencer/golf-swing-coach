@@ -246,3 +246,88 @@ once real segmentation exists, per the existing guidance above.
 not measurement — this is the first real clip and it already raised a flag on
 exactly that axis. Trust the plan's *shape* (check fps against known timing) even
 when the specific mechanism isn't confirmed yet.
+
+### 2026-08-19 — M2 first run against real multi-swing footage: three bugs found and fixed, one left open
+
+Ran `segment.py` against a real 30fps, 34.6s, ~6-swing range session (the first
+multi-swing clip available). `PLAN.md` section 7's algorithm, implemented literally,
+found *something* on the first try but got the events wrong in ways that only real
+footage exposed. In order of discovery:
+
+**Bug 1 — the 20Hz wrist cutoff violates Nyquist below 50fps.** `PLAN.md`'s cutoff
+assumed true 240fps capture (Nyquist 120Hz). Both real clips available so far are
+~30fps (Nyquist 15Hz) — the capture spec (240fps slo-mo) hasn't actually been
+followed by either test clip. `smooth.lowpass` correctly raised rather than doing
+something undefined with an invalid cutoff. **Fix:** `_wrist_cutoff_hz(fps)` scales
+the cutoff to `min(20Hz, 0.45 * Nyquist)` instead of hardcoding 20. Verified: no
+longer crashes on either real clip.
+
+**Bug 2 (the big one) — "quiet" was calibrated per-swing instead of per-clip.**
+Original: `quiet_threshold = max(0.2 * peak_speed, median_speed)`. On the real clip
+this evaluated to ~577-580px/s — but the clip's actual stillness floor (25th
+percentile of the whole session's speed) was ~60px/s. A threshold 10x too loose
+grabbed noise dips *inside* the downswing itself as "the top of the backswing":
+address and top collapsed to 4 frames apart (0.13s) instead of the ~9 frames a real
+transition takes at this fps. **Fix:** `quiet_threshold = percentile(speed_whole_clip,
+25) * 1.5`, computed once from the whole clip's resting-speed distribution instead of
+a fraction of each swing's own peak. Verified by hand against the raw per-frame speed
+trace before and after (documented address→top gaps of 4 frames became 9 frames,
+matching what the frame stills actually show).
+
+**Bug 3 — wrist midpoint was an unweighted average of two confidences.** Real clip
+had a stretch (frames ~980-1010) where the camera was pointed at a golf-simulator
+screen, not the golfer — MediaPipe's visibility on both wrists sat at ~0.1 there, yet
+`wrist_midpoint` averaged the (meaningless) positions anyway, and segmentation
+confidently reported a swing from it. Separately, in a real swing, right-wrist
+visibility fell from 0.69 to 0.39 across 10 frames during follow-through (natural
+occlusion), producing a spurious ~2900px/s "speed" spike from the unweighted average
+that outcompeted the real swing's own, smaller peak and got it suppressed by the
+`distance` parameter. **Fix, two parts:**
+1. `wrist_midpoint` is now visibility-weighted (`(L*visL + R*visR) / (visL+visR)`),
+   NaN below `MIN_WRIST_VISIBILITY=0.4` combined, rather than a plain average.
+2. That alone wasn't enough: `smooth.lowpass` linearly interpolates across the NaN
+   gap to keep *positions* continuous (correct, documented behavior), but filtfilt
+   then *rings* at the boundary where the flat interpolated stretch meets real data
+   again — producing a fabricated dip that read as genuine stillness and a
+   fabricated 9600px/s spike that read as a genuine swing, both landing inside a
+   region the wrists were never actually seen. Interpolating a *position* for
+   continuity is one thing; treating its *derivative* as observed motion is another.
+   Added `wrist_trustworthy(lm)`, a boolean mask of frames where the wrists were
+   actually tracked, and `find_swings` now rejects any candidate whose address, top,
+   impact, or peak frame lands outside it. Verified: the simulator-screen false
+   positive is gone; the two real swings elsewhere in the clip are unaffected.
+
+**Open issue — NOT fixed, needs a different algorithm, not a threshold tweak.**
+Even after all three fixes, 1 of 3 remaining detected swings has an incorrect `top`.
+Confirmed by hand on two separate real swings:
+- One golfer waggles/rehearses before actually swinging, creating a *second*
+  legitimate stillness period (frames 648-654: speed ~20-100px/s) between address
+  and the real backswing (which doesn't start until ~658). `_find_top`'s "last local
+  minimum below the quiet threshold, searched backward up to 1.5s" logic has no way
+  to distinguish "settled again after a waggle" from "the actual top of backswing" --
+  it grabbed the deeper, more obvious dip at 653, which the frame stills confirm is
+  still an address-like pose, not arms-raised-at-the-top. The real top is somewhere
+  in the actually-elevated stretch closer to impact that the current logic never
+  considers, because it stops at the first/last qualifying threshold-crossing rather
+  than reasoning about the swing's structure.
+- A related but distinct failure appeared on a different swing in the same clip,
+  where a small, low-confidence peak next to a much larger one got discarded by the
+  `distance` parameter in `find_peaks`, when the smaller peak was arguably the real
+  swing and the larger one coincided suspiciously with degrading wrist visibility.
+
+**Likely fix, not yet implemented:** stop searching backward from the peak for *a*
+qualifying minimum. Work forward from a confirmed address instead, and find "top" as
+the point where wrist velocity *direction* reverses (backswing and downswing go
+opposite ways), not just where its *magnitude* dips below a threshold. Direction
+reversal is a structural property of the swing itself and shouldn't be fooled by a
+waggle, which doesn't reverse in the same way. This is a real algorithm change, not
+a constant to retune, so it's flagged here rather than silently patched.
+
+**Lesson:** three real, verifiable bugs surfaced from a single clip that a synthetic
+test never would have caught -- every one of them was invisible until frame stills
+and raw per-frame values were checked by hand, exactly per `AGENTS.md`'s "validate
+against real footage" and "plot it before theorizing" rules. The remaining open
+issue is a reminder that a threshold fix which resolves the *symptom* on the clip in
+hand can still leave the underlying algorithm wrong in a way the next clip exposes
+differently -- don't declare a milestone's acceptance criteria met on partial
+evidence just because the loudest bugs are gone.

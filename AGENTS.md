@@ -95,8 +95,9 @@ swingcoach/
   metrics.py     the four measurements, normalization, ranking
   feedback.py    templates and drills
   render/
-    overlay.py   annotated MP4
-    report.py    self-contained HTML
+    overlay.py       annotated MP4
+    velocity_plot.py wrist-speed PNG w/ detected events -- the segmentation debug view
+    report.py        self-contained HTML (wraps overlay + velocity_plot + metrics)
   cli.py         the only place that parses args or touches argv
 tests/
 ```
