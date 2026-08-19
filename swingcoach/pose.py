@@ -99,3 +99,27 @@ def run_pose(
                 visibility[i, j] = lm.visibility
 
     return Landmarks(xy=xy, visibility=visibility, fps=fps)
+
+
+def weighted_midpoint(lm: Landmarks, a: int, b: int) -> tuple[np.ndarray, np.ndarray]:
+    """Visibility-weighted midpoint of two landmarks, plus their summed
+    visibility (0..2, not averaged -- callers threshold this directly, e.g.
+    "at least one landmark is confident, or both are somewhat confident").
+
+    An unweighted average lets a confident landmark get dragged around by
+    an unreliable one; this was a real bug in segmentation (MISTAKES.md,
+    "wrist midpoint was an unweighted average of two confidences") before
+    both segment.py and metrics.py needed the same fix, hence pulling it
+    into one shared, pose-level utility instead of duplicating it.
+
+    NaN where summed visibility is ~0 -- never a fabricated position from
+    two landmarks neither of which was actually seen.
+    """
+    pa, pb = lm.xy[:, a], lm.xy[:, b]
+    va, vb = lm.visibility[:, a], lm.visibility[:, b]
+    total_vis = va + vb
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        midpoint = (pa * va[:, None] + pb * vb[:, None]) / total_vis[:, None]
+    midpoint[total_vis < 1e-6] = np.nan
+    return midpoint, total_vis

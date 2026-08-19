@@ -60,8 +60,8 @@ Use these terms exactly; they map to identifiers in the code.
 | **early extension** | Pelvis moving *toward the ball* during the downswing. The most common amateur fault, and the one DTL shows best. |
 | **loss of posture** | Spine angle straightening away from its address value. Co-occurs with early extension but measured separately. |
 | **butt line** | A vertical line dropped at the golfer's hip line at address. Crossing it is early extension made visible. |
-| **deviation** | A measured difference from the address frame, normalized by shoulder width. The unit of output. |
-| **scale** | Shoulder width in pixels at address. Every distance is divided by it so camera distance doesn't matter. |
+| **deviation** | A measured difference from the address frame, normalized by torso length. The unit of output. |
+| **scale** | Torso length (pelvis-to-shoulder-midpoint distance) in pixels at address. Every distance is divided by it so camera distance doesn't matter. NOT shoulder width — see MISTAKES.md, "scale used shoulder width, which collapses toward zero from a DTL angle." |
 | **ball direction** | Signed image-x direction from pelvis toward the hands at address. Self-calibrating; do not hardcode by handedness. |
 
 ---
@@ -76,7 +76,7 @@ silently distorts every angle.
 
 **The lowest physical point is the maximum `y`.** This catches people constantly.
 
-**Units.** Distances are in shoulder-widths (dimensionless), never pixels, once they
+**Units.** Distances are in torso-lengths (dimensionless), never pixels, once they
 leave `metrics.py`. Angles in degrees. Time in seconds; frame indices stay `int`.
 
 **Handedness** is inferred from the address pose, not configured. See "ball
@@ -145,7 +145,7 @@ def find_swings(lm: Landmarks, fps: float) -> list[Swing]: ...
 class Deviation:
     name: str
     value: float | None  # None when not measurable
-    unit: str  # "shoulder-widths" | "degrees"
+    unit: str  # "torso-lengths" | "degrees"
     peak_frame: int | None
     confidence: float  # driven by landmark visibility
     note: str = ""  # why it's None, when it is

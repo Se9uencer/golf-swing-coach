@@ -331,3 +331,61 @@ issue is a reminder that a threshold fix which resolves the *symptom* on the cli
 hand can still leave the underlying algorithm wrong in a way the next clip exposes
 differently -- don't declare a milestone's acceptance criteria met on partial
 evidence just because the loudest bugs are gone.
+
+### 2026-08-19 — M3 first run: `scale` used shoulder width, which collapses toward zero from a DTL angle
+
+Built `metrics.py` (early extension, loss of posture, head sway/lift) and ran it
+against the three swings M2 had already found in the real multi-swing clip. Two of
+the three swings produced physically absurd numbers: head movement of 1.8-3.2
+*torso-lengths* (the head would have to travel several body-lengths sideways), pelvis
+shifts of 1.4-2.7 shoulder-widths. Real faults are a fraction of one body-length, not
+multiples.
+
+**Root cause: `scale` was defined as shoulder-to-shoulder width at address**
+(`PLAN.md` section 4's original formula, carried into `AGENTS.md`'s vocabulary table
+without question). That's the standard normalization in face-on pose-fitness apps,
+where shoulder width is a large, stable reference. It is exactly the wrong axis for a
+DTL camera: viewed from the side, a golfer's two shoulders sit almost in a line away
+from the camera, so their 2D separation is a foreshortened projection that collapses
+toward zero and is highly sensitive to small variations in exact body orientation.
+Confirmed directly: drawing the raw shoulder landmarks on the source frame showed
+MediaPipe correctly placing them (visibility 1.0, not a tracking error) almost on top
+of each other -- shoulder width measured 20px and 35px at two real address frames,
+versus 134px at a third, same golfer, same fixed camera, the only difference being
+which way the golfer happened to be oriented relative to it. Dividing real pixel
+displacements by a ~20-35px denominator instead of the true ~130px inflated every
+distance-based metric by 4-6x.
+
+**Fix:** `scale` is now torso length -- the pelvis-to-shoulder-midpoint distance at
+address -- instead of shoulder width. Torso length is dominated by standing height,
+which barely foreshortens under left-right camera rotation the way shoulder width
+does, so it stays large and stable regardless of the golfer's exact orientation to a
+fixed DTL camera. Updated everywhere the old definition was documented: `PLAN.md`
+section 4's formula block, and `AGENTS.md`'s vocabulary table and unit list (the unit
+string changed from `"shoulder-widths"` to `"torso-lengths"` throughout).
+Re-verified against the same real clip: the two swings already trusted from M2's
+validation now produce sane numbers (early extension 0.23-0.28 torso-lengths, posture
+change 16.6-26 degrees); the one swing M2 had already flagged as suspect (its
+address/impact don't correspond to a real swing sequence) still produces inflated
+numbers, which is expected and consistent -- a metric is only as trustworthy as the
+event indices it's fed, and this wasn't a new failure, it was the same known-bad
+input surfacing through a different module.
+
+**Second, smaller finding from the same session: ranking compared raw values across
+different units.** With `scale` fixed, a real ~40px pelvis shift (1.0 shoulder-widths
+under the old, buggy `scale`) still lost a magnitude-ranking comparison to the
+~22-degree spine-tilt change it incidentally caused, purely because "degrees" produces
+numerically bigger values than a normalized-distance unit for physically comparable
+deviations. `PLAN.md` section 6 says deviations should be "normalized" before ranking
+but the implementation had only normalized *within* a unit (by `scale`), not *across*
+units. Fixed with a per-unit rank-scale divisor (`_RANK_SCALE` in `metrics.py`),
+explicitly documented as a rough, uncalibrated placeholder pending M5 -- it only
+changes ranking order, never the reported value.
+
+**Lesson:** a definition carried over unreflectively from a different domain (face-on
+pose apps) can be wrong for this project's camera angle in a way that produces
+plausible-looking code and catastrophically wrong numbers -- and the bug hides behind
+"high confidence" (visibility 1.0), so a confidence check alone would never have
+caught it. The only thing that did was comparing the output against physical
+plausibility (a torso-length-scale fault should never be several body-lengths large)
+and then drawing the actual landmark positions on the actual frame.

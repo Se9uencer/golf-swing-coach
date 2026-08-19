@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.signal import find_peaks
 
-from swingcoach.pose import LEFT_WRIST, RIGHT_WRIST, Landmarks
+from swingcoach.pose import LEFT_WRIST, RIGHT_WRIST, Landmarks, weighted_midpoint
 from swingcoach.smooth import lowpass
 
 WRIST_SMOOTH_CUTOFF_HZ = 20.0  # target cutoff at capture rates >= ~50fps
@@ -53,14 +53,11 @@ def wrist_midpoint(lm: Landmarks) -> np.ndarray:
     (e.g. the camera pointed at a simulator screen instead of the golfer --
     this happened on real footage, visibility ~0.1 throughout), the frame is
     NaN, which smooth.lowpass already knows how to interpolate across -- never
-    a fabricated position. See MISTAKES.md.
+    a fabricated position. See MISTAKES.md. The weighted-average math itself
+    lives in pose.weighted_midpoint, shared with metrics.py.
     """
-    left, right = lm.xy[:, LEFT_WRIST], lm.xy[:, RIGHT_WRIST]
-    vis_left, vis_right = lm.visibility[:, LEFT_WRIST], lm.visibility[:, RIGHT_WRIST]
-    total_vis = vis_left + vis_right
-
-    with np.errstate(invalid="ignore", divide="ignore"):
-        midpoint = (left * vis_left[:, None] + right * vis_right[:, None]) / total_vis[:, None]
+    midpoint, total_vis = weighted_midpoint(lm, LEFT_WRIST, RIGHT_WRIST)
+    midpoint = midpoint.copy()
     midpoint[total_vis < MIN_WRIST_VISIBILITY] = np.nan
     return midpoint
 
@@ -80,8 +77,8 @@ def wrist_trustworthy(lm: Landmarks) -> np.ndarray:
     not. find_swings uses this mask to refuse to place an event on a frame
     that was never actually seen. See MISTAKES.md.
     """
-    vis_left, vis_right = lm.visibility[:, LEFT_WRIST], lm.visibility[:, RIGHT_WRIST]
-    return (vis_left + vis_right) >= MIN_WRIST_VISIBILITY
+    _, total_vis = weighted_midpoint(lm, LEFT_WRIST, RIGHT_WRIST)
+    return total_vis >= MIN_WRIST_VISIBILITY
 
 
 def _wrist_cutoff_hz(fps: float) -> float:

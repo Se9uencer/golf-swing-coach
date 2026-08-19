@@ -65,14 +65,27 @@ pelvis(t)   = midpoint(LEFT_HIP, RIGHT_HIP)
 shoulder(t) = midpoint(LEFT_SHOULDER, RIGHT_SHOULDER)
 wrist(t)    = midpoint(LEFT_WRIST, RIGHT_WRIST)
 
-scale     = |LEFT_SHOULDER - RIGHT_SHOULDER|  at address, in pixels
+scale     = |shoulder(address) - pelvis(address)|  (torso length, in pixels)
 ball_dir  = sign(wrist.x[address] - pelvis.x[address])
 ```
 
 `scale` makes every distance dimensionless, so the numbers mean the same thing at any
-camera distance. `ball_dir` self-calibrates handedness from the address pose — the
-hands hang out over the ball, so the pelvis→wrist direction *is* the ball direction.
-No configuration flag, nothing to get wrong when switching sides.
+camera distance. It's torso length, **not shoulder width** — shoulder width was the
+original choice and is wrong for this camera angle: from DTL the two shoulders sit
+almost in a line away from the camera, so their 2D separation collapses toward zero
+and every distance divided by it blows up (real clip: shoulder width measured 20px at
+one address frame vs. 134px at another, same golfer, same fixed camera — see
+MISTAKES.md). Torso length stays large and stable across viewing angle instead.
+`ball_dir` self-calibrates handedness from the address pose — the hands hang out over
+the ball, so the pelvis→wrist direction *is* the ball direction. No configuration
+flag, nothing to get wrong when switching sides.
+
+Search windows below say `[top, impact]` because that was the original design intent
+— in the current implementation they're `[address, impact]` instead, because
+top-of-backswing detection isn't reliable yet (MISTAKES.md). This doesn't corrupt
+these particular metrics — pelvis and spine motion during the backswing runs, if
+anything, opposite the downswing fault each one is meant to catch — but revisit once
+top detection is fixed.
 
 ### Early extension — pelvis moving toward the ball
 
@@ -281,7 +294,7 @@ address / top / impact frames survive eyeball inspection on every one.
 
 ### M3 — Metrics
 
-`metrics.py`: the four measurements, shoulder-width normalization, ranking,
+`metrics.py`: the four measurements, torso-length normalization, ranking,
 confidence propagation.
 
 **Accept when:** numbers come out per swing, `None` appears where landmarks were
