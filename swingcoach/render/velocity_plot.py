@@ -5,11 +5,12 @@ did it split this one wrong") is answered in five seconds by looking at
 this plot and in much longer by staring at segment.py. See AGENTS.md, "When
 a number looks wrong, plot it before theorizing."
 
-Not the HTML report (that's report.py, M4) -- just the PNG this project
-leans on constantly while segment.py's thresholds are still first-pass
-guesses (PLAN.md M5).
+Two entry points, one shared figure: `save_velocity_plot` writes a PNG file
+(the standalone debug view); `velocity_plot_png_bytes` returns the same
+image as bytes, for report.py to embed directly without a temp file.
 """
 
+import io
 from pathlib import Path
 
 import matplotlib
@@ -28,7 +29,7 @@ _EVENT_STYLE = {
 }
 
 
-def save_velocity_plot(lm: Landmarks, swings: list[Swing], fps: float, out_path: Path) -> None:
+def _build_figure(lm: Landmarks, swings: list[Swing], fps: float):
     speed = wrist_speed(lm, fps)
     t = np.arange(len(speed)) / fps
 
@@ -61,5 +62,18 @@ def save_velocity_plot(lm: Landmarks, swings: list[Swing], fps: float, out_path:
     ax.set_ylabel("wrist speed (px/s)")
     ax.set_title(f"{len(swings)} swing(s) detected")
     fig.tight_layout()
+    return fig
+
+
+def save_velocity_plot(lm: Landmarks, swings: list[Swing], fps: float, out_path: Path) -> None:
+    fig = _build_figure(lm, swings, fps)
     fig.savefig(out_path, dpi=120)
     plt.close(fig)
+
+
+def velocity_plot_png_bytes(lm: Landmarks, swings: list[Swing], fps: float) -> bytes:
+    fig = _build_figure(lm, swings, fps)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=120)
+    plt.close(fig)
+    return buf.getvalue()

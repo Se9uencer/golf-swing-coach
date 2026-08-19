@@ -110,7 +110,7 @@ def _peak_in_window(values: np.ndarray, lo: int, hi: int) -> tuple[float, int]:
     return float(window[local_idx]), lo + local_idx
 
 
-def _head_trace(lm: Landmarks) -> tuple[np.ndarray, np.ndarray, str]:
+def head_trace(lm: Landmarks) -> tuple[np.ndarray, np.ndarray, str]:
     """(xy, visibility, source). Ear midpoint first, nose as fallback -- the
     nose is frequently invisible from directly behind (MISTAKES.md, "the
     nose landmark is frequently invisible from behind")."""
@@ -199,7 +199,7 @@ def measure(lm: Landmarks, swing: Swing, fps: float) -> list[Deviation]:
     lop_conf = float(np.mean(posture_vis[address : impact + 1])) / 2.0
     deviations.append(Deviation("loss_of_posture", lop_value, "degrees", lop_frame, lop_conf))
 
-    head_xy, head_vis, head_source = _head_trace(lm)
+    head_xy, head_vis, head_source = head_trace(lm)
     if head_source == "none":
         note = "head not confidently visible (neither ears nor nose)"
         deviations.append(Deviation("head_sway", None, "torso-lengths", None, 0.0, note=note))

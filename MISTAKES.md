@@ -389,3 +389,23 @@ plausible-looking code and catastrophically wrong numbers -- and the bug hides b
 caught it. The only thing that did was comparing the output against physical
 plausibility (a torso-length-scale fault should never be several body-lengths large)
 and then drawing the actual landmark positions on the actual frame.
+
+### 2026-08-19 — M4: ghost skeleton was invisible against a bright sky
+
+**Symptom:** the ghosted-address overlay (PLAN.md section 9) ran without error and
+confirmably modified real pixels (checked via frame diff against the unmodified
+source), but was not visible by eye in the rendered video -- looked like plain live
+tracking with no ghost at all.
+
+**Cause:** `GHOST_COLOR` was light gray `(200, 200, 200)` at 35% alpha. Golf is
+outdoors under open sky; light gray at low opacity against a bright blue-white sky is
+close to invisible, even though the pixels really were being blended.
+
+**Fix:** bold red-orange `(0, 80, 255)` at 55% alpha. Verified by eye afterward, not
+just by re-running the frame-diff check -- the diff check only proves pixels changed,
+not that a human can see them, which is the actual requirement for a visual coaching
+aid.
+
+**Lesson:** "the code ran and pixels changed" is not the same acceptance bar as "a
+person can actually see this." For anything whose entire job is being looked at, the
+only real test is looking at it.

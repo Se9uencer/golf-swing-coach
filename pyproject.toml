@@ -9,6 +9,7 @@ dependencies = [
     "numpy>=1.26",
     "scipy>=1.12",
     "matplotlib>=3.8",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["swingcoach*"]
+
+[tool.setuptools.package-data]
+swingcoach = ["render/templates/*.jinja"]
 
 [tool.ruff]
 line-length = 100

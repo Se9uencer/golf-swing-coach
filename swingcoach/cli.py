@@ -17,6 +17,7 @@ import numpy as np
 from swingcoach.ingest import VideoLoadError, load_video
 from swingcoach.pose import DEFAULT_MODEL_PATH, Landmarks, PoseModelMissing, run_pose
 from swingcoach.render.overlay import render_skeleton_overlay
+from swingcoach.render.report import generate_report
 from swingcoach.render.velocity_plot import save_velocity_plot
 from swingcoach.segment import find_swings
 from swingcoach.smooth import lowpass
@@ -103,6 +104,31 @@ def _run_segment(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_report(args: argparse.Namespace) -> int:
+    try:
+        frames, fps = load_video(args.input)
+    except VideoLoadError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    print(f"{args.input}: {len(frames)} frames @ {fps:.2f}fps (container header)")
+
+    try:
+        landmarks = _load_or_run_pose(args.input, fps, frames, args.model, args.cache)
+    except PoseModelMissing as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    swings = find_swings(landmarks, fps)
+    print(f"{len(swings)} swing(s) detected")
+    if not swings:
+        print("nothing to report -- no swings detected", file=sys.stderr)
+        return 1
+
+    generate_report(frames, landmarks, swings, fps, args.input.name, args.output)
+    print(f"wrote {args.output}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -128,6 +154,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_segment.add_argument("--cache", type=Path, default=None, help="pose cache .npz path")
     p_segment.set_defaults(func=_run_segment)
+
+    p_report = sub.add_parser("report", help="the actual thing: one self-contained HTML report")
+    p_report.add_argument("input", type=Path, help="source swing video")
+    p_report.add_argument("output", type=Path, help="HTML report to write")
+    p_report.add_argument("--model", type=Path, default=DEFAULT_MODEL_PATH)
+    p_report.add_argument("--cache", type=Path, default=None, help="pose cache .npz path")
+    p_report.set_defaults(func=_run_report)
 
     args = parser.parse_args(argv)
     return args.func(args)
