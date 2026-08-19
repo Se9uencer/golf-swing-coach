@@ -498,3 +498,39 @@ visible by going back to the raw signal (here, wrist HEIGHT, not just speed) rat
 than trying to patch the second stage in isolation. Also: this bug was invisible
 until a real person who knew what their own swing actually looked like reviewed the
 output -- neither the plot nor the frame-count sanity checks caught it.
+
+### 2026-08-19 — embedded videos were black boxes on a real laptop: wrong codec
+
+**Symptom:** report opened fine in the sandbox where it was generated -- pulling
+frames back out with OpenCV worked, frame content was correct. Downloaded onto an
+actual laptop and opened in a real browser, every embedded `<video>` was just a
+black player with no picture.
+
+**Cause:** `render/overlay.py` wrote MP4s with `cv2.VideoWriter(..., fourcc="mp4v")`.
+Checked what OpenCV's bundled FFmpeg in this environment can actually open a writer
+for: `avc1`, `H264`, `h264`, `X264` all fail outright (`isOpened()` returns False,
+with FFmpeg logging that the tag isn't supported for this codec ID) -- `mp4v` is the
+only one that works. mp4v means MPEG-4 Part 2, an old, low-efficiency codec that
+`cv2.VideoCapture` (built on the same FFmpeg, which decodes far more than typical
+browsers) reads back just fine. Chrome, Safari, and Firefox's `<video>` tag do not --
+they expect H.264 (or VP9/AV1), so the file was a technically-valid MP4 that
+`cv2.imencode`-adjacent testing could never have caught, because the thing that broke
+(browser decode support) was never exercised by the verification method (OpenCV
+decode).
+
+**Fix:** stopped using `cv2.VideoWriter` for output entirely. `imageio-ffmpeg` ships
+a real static ffmpeg binary with `libx264` built in; frames are now piped to it
+directly as raw BGR24 (`render/video_writer.py`, `Mp4Writer`) with
+`-c:v libx264 -pix_fmt yuv420p`. The `yuv420p` pixel format matters specifically --
+libx264 defaults to a higher-fidelity chroma format that a lot of hardware decoders
+(including some mobile browsers) reject; `yuv420p` is the safe, universally-supported
+choice. Bonus: proper H.264 compression made the files smaller too (~0.9MB vs.
+3-5MB per swing clip with mp4v).
+
+**Lesson:** verifying a video file by decoding it with the same library that wrote
+it (or a close relative) proves nothing about whether an unrelated player can decode
+it. The only real test for "will this play in a browser" is a browser, or checking
+the actual codec against what browsers are known to support -- not "did my own
+tooling read it back successfully." This is the same shape of mistake as the ghost-
+color one: pixels being technically present/correct is not the acceptance bar for
+something that has to work for someone else, on their own device.

@@ -332,3 +332,8 @@ Only after M5: consider a shaft detector, or an app.
 - **Head-movement fallback landmark**, pending what M0 shows.
 - **Where sample clips live.** Too large for git; keep out of the repo and reference
   by path.
+- **Rename "address" to "setup" in report-facing text.** "Address" is golf jargon
+  that a first-time reader doesn't recognize (flagged directly by a real recipient).
+  Code identifiers, `Swing.address`, and internal docs can keep "address" — it's an
+  established term in the codebase and in golf instruction. Only the HTML report's
+  labels (frame captions, table headers) need the friendlier word.

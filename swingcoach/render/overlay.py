@@ -25,6 +25,7 @@ from swingcoach.pose import (
     Landmarks,
     weighted_midpoint,
 )
+from swingcoach.render.video_writer import Mp4Writer
 from swingcoach.segment import Swing
 
 VISIBILITY_THRESHOLD = 0.3
@@ -88,10 +89,9 @@ def render_skeleton_overlay(frames: list[np.ndarray], landmarks: Landmarks, out_
         )
 
     h, w = frames[0].shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(out_path), fourcc, landmarks.fps, (w, h))
+    writer = Mp4Writer(out_path, landmarks.fps, w, h)
     if not writer.isOpened():
-        raise RuntimeError(f"could not open VideoWriter for {out_path}")
+        raise RuntimeError(f"could not open video writer for {out_path}")
 
     try:
         for i, frame in enumerate(frames):
@@ -157,10 +157,9 @@ def render_swing_overlay(
     ghost_head = head_xy[address]
     ghost_valid = not (np.isnan(ghost_head).any())
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(out_path), fourcc, landmarks.fps, (w, h))
+    writer = Mp4Writer(out_path, landmarks.fps, w, h)
     if not writer.isOpened():
-        raise RuntimeError(f"could not open VideoWriter for {out_path}")
+        raise RuntimeError(f"could not open video writer for {out_path}")
 
     hand_path_points: list[tuple[int, int]] = []
 
