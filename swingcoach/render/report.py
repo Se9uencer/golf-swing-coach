@@ -41,8 +41,10 @@ def _frame_still_b64(frame: np.ndarray) -> str:
 
 def _line_dict(line):
     return {
+        "name": line.name,
         "pretty_name": line.pretty_name,
-        "text": line.text,
+        "cue": line.cue,
+        "detail": line.detail,
         "value": line.value,
         "unit": line.unit,
         "peak_frame": line.peak_frame,

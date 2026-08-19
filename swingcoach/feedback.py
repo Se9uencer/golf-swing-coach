@@ -1,15 +1,23 @@
 """Feedback text. Pure template substitution -- see PLAN.md section 8 and
 AGENTS.md hard constraint 5 for why there is no LLM anywhere in this file.
 
-Every sentence traces to a number `metrics.measure` produced. No pass/fail
-verdicts (AGENTS.md constraint 4): each deviation gets a plain, continuum
-sentence stating direction and magnitude, never "good" or "bad". The one
-piece of judgment this module makes is which single deviation to call out
-as the "biggest" thing to work on -- that's just `deviations[0]` from
+Every cue traces to a number `metrics.measure` produced, and every cue
+compares you only to your OWN address position (PLAN.md section 5) --
+never to an external "correct" posture or population norm. That's a
+deliberate, documented boundary (AGENTS.md hard constraint 4: no invented
+thresholds presented as verdicts). A cue like "you're standing up out of
+your posture" is honest under that boundary, because it's describing
+motion away from where *you* started. A cue like "you should stand
+straighter" or "bend your knees more" would require an external idea of
+correct posture this project has deliberately never built -- see
+MISTAKES.md for the real user feedback that drew this line explicitly.
+
+No pass/fail verdicts: each deviation gets a plain, continuum cue stating
+direction and (in the detail line) magnitude, never "good" or "bad". The
+one piece of judgment this module makes is which single deviation to call
+out as the "biggest" thing to work on -- that's just `deviations[0]` from
 metrics.measure's existing magnitude ranking, with one curated drill
-attached. This mirrors PLAN.md's original differentiation idea (a single
-prescribed drill, not a wall of numbers) without inventing a threshold for
-what counts as a "real" fault.
+attached.
 """
 
 from dataclasses import dataclass
@@ -23,45 +31,101 @@ _PRETTY_NAMES = {
     "head_lift": "Head lift",
 }
 
-# {value} and {frame} are substituted; both branches for a fault are chosen
-# by sign only, never by magnitude -- no threshold is being invented here,
-# just which of two true, neutral descriptions of the same number applies.
+# Each fault has a `cue` (an actionable, coach-toned sentence -- what you'd
+# actually want to hear) and a `detail` (the number behind it, for anyone
+# who wants to see the raw measurement). Selected by sign only, never by
+# magnitude -- no threshold is being invented, just which of two true,
+# neutral descriptions of the same number applies.
 _TEMPLATES = {
     "early_extension": {
-        "toward": (
-            "Hips moved toward the ball by {value:.2f} torso-lengths, peaking at frame {frame}."
-        ),
-        "away": (
-            "Hips moved away from the ball (or stayed back) by {value:.2f} "
-            "torso-lengths, peaking at frame {frame}."
-        ),
+        "toward": {
+            "cue": (
+                "Your hips are pushing toward the ball on the way down. Try "
+                "to keep them back and rotate around your spine instead of "
+                "thrusting forward -- that's classic early extension."
+            ),
+            "detail": (
+                "Hips moved {value:.2f} torso-lengths toward the ball, peaking at frame {frame}."
+            ),
+        },
+        "away": {
+            "cue": (
+                "Your hips stayed behind the ball through the downswing -- "
+                "no forward hip slide here."
+            ),
+            "detail": (
+                "Hips moved {value:.2f} torso-lengths away from the ball "
+                "(or stayed back), peaking at frame {frame}."
+            ),
+        },
     },
     "loss_of_posture": {
-        "up": (
-            "Spine angle straightened by {value:.1f} degrees from address, "
-            "peaking at frame {frame} -- standing up out of the shot."
-        ),
-        "down": (
-            "Spine angle bent {value:.1f} degrees more than at address, peaking at frame {frame}."
-        ),
+        "up": {
+            "cue": (
+                "You're standing up out of your posture as you swing. Focus "
+                "on keeping the same forward bend from address all the way "
+                "through impact."
+            ),
+            "detail": (
+                "Spine angle straightened by {value:.1f} degrees from address, "
+                "peaking at frame {frame}."
+            ),
+        },
+        "down": {
+            "cue": (
+                "You're bending forward more than you started at address -- "
+                "make sure you're not losing your spine angle downward "
+                "through the swing."
+            ),
+            "detail": (
+                "Spine angle bent {value:.1f} degrees more than address, peaking at frame {frame}."
+            ),
+        },
     },
     "head_sway": {
-        "toward": (
-            "Head moved {value:.2f} torso-lengths toward the ball, peaking at frame {frame}."
-        ),
-        "away": (
-            "Head moved {value:.2f} torso-lengths away from the ball, peaking at frame {frame}."
-        ),
+        "toward": {
+            "cue": (
+                "Your head is drifting toward the ball during the swing. "
+                "Try to keep it steady over the ball rather than sliding "
+                "forward."
+            ),
+            "detail": (
+                "Head moved {value:.2f} torso-lengths toward the ball, peaking at frame {frame}."
+            ),
+        },
+        "away": {
+            "cue": (
+                "Your head is drifting away from the ball during the swing. "
+                "Try to keep it centered rather than sliding back."
+            ),
+            "detail": (
+                "Head moved {value:.2f} torso-lengths away from the ball, peaking at frame {frame}."
+            ),
+        },
     },
     "head_lift": {
-        "up": (
-            "Head rose {value:.2f} torso-lengths above its address height, "
-            "peaking at frame {frame}."
-        ),
-        "down": (
-            "Head dropped {value:.2f} torso-lengths below its address height, "
-            "peaking at frame {frame}."
-        ),
+        "up": {
+            "cue": (
+                "You're lifting your head and upper body up through the "
+                "swing. Try to keep your eyes on the ball and stay down "
+                "through impact."
+            ),
+            "detail": (
+                "Head rose {value:.2f} torso-lengths above its address "
+                "height, peaking at frame {frame}."
+            ),
+        },
+        "down": {
+            "cue": (
+                "Your head dropped lower than address through the swing -- "
+                "less common, but make sure you're not diving down at the "
+                "ball."
+            ),
+            "detail": (
+                "Head dropped {value:.2f} torso-lengths below its address "
+                "height, peaking at frame {frame}."
+            ),
+        },
     },
 }
 
@@ -98,7 +162,8 @@ _DRILLS = {
 class FaultLine:
     name: str
     pretty_name: str
-    text: str  # rendered sentence, or an explanation if unmeasurable
+    cue: str  # actionable, coach-toned sentence -- or an explanation if unmeasurable
+    detail: str  # the supporting number, empty string if unmeasurable
     value: float | None
     unit: str
     peak_frame: int | None
@@ -124,15 +189,18 @@ def _direction_key(name: str, value: float) -> str:
 def _line_for(d: Deviation) -> FaultLine:
     pretty = _PRETTY_NAMES.get(d.name, d.name)
     if d.value is None:
-        text = f"{pretty}: not measurable ({d.note})."
+        cue = f"{pretty}: not measurable ({d.note})."
+        detail = ""
     else:
         direction = _direction_key(d.name, d.value)
-        template = _TEMPLATES[d.name][direction]
-        text = template.format(value=abs(d.value), frame=d.peak_frame)
+        pair = _TEMPLATES[d.name][direction]
+        cue = pair["cue"]
+        detail = pair["detail"].format(value=abs(d.value), frame=d.peak_frame)
     return FaultLine(
         name=d.name,
         pretty_name=pretty,
-        text=text,
+        cue=cue,
+        detail=detail,
         value=d.value,
         unit=d.unit,
         peak_frame=d.peak_frame,
@@ -141,7 +209,7 @@ def _line_for(d: Deviation) -> FaultLine:
 
 
 def describe(deviations: list[Deviation]) -> SwingFeedback:
-    """Render metrics.measure's output into plain sentences plus one
+    """Render metrics.measure's output into coach-toned cues plus one
     prescribed drill for the single largest deviation. `deviations` is
     expected in metrics.measure's ranked order (|value| descending, None
     last) -- this function trusts that ordering rather than re-deriving it.

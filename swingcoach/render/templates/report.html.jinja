@@ -31,12 +31,18 @@
   .card { background: var(--card); border-radius: 10px; padding: 0.9rem 1rem; margin: 0.75rem 0; }
   .card.biggest { border-left: 3px solid var(--accent); }
   .card h3 { margin: 0 0 0.4rem; font-size: 0.95rem; }
+  .card .badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); font-weight: 600; }
   .card p { margin: 0.3rem 0; }
-  .drill { color: var(--muted); font-size: 0.9rem; }
-  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.85rem; }
+  .card .cue { font-size: 0.95rem; }
+  .card .drill { color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; }
+  .card .detail { color: var(--muted); font-size: 0.78rem; margin-top: 0.4rem; }
+  .card.unmeasurable { opacity: 0.6; }
+  details { margin: 1rem 0; }
+  summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.85rem; }
   th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
   th { color: var(--muted); font-weight: 600; }
-  .unmeasurable { color: var(--muted); font-style: italic; }
+  .unmeasurable-row { color: var(--muted); font-style: italic; }
   .confidence-low { color: #c05621; }
   footer { color: var(--muted); font-size: 0.75rem; margin-top: 3rem; text-align: center; }
 </style>
@@ -65,39 +71,40 @@
   <figure><img src="data:image/png;base64,{{ swing.impact_frame_b64 }}"><figcaption>impact (frame {{ swing.impact_idx }})</figcaption></figure>
 </div>
 
-{% if swing.biggest %}
-<div class="card biggest">
-  <h3>Biggest change: {{ swing.biggest.pretty_name }}</h3>
-  <p>{{ swing.biggest.text }}</p>
+{% for line in swing.lines %}
+<div class="card {{ 'biggest' if swing.biggest and line.name == swing.biggest.name else '' }} {{ 'unmeasurable' if line.value is none else '' }}">
+  {% if swing.biggest and line.name == swing.biggest.name %}<div class="badge">Biggest change</div>{% endif %}
+  {% if swing.steadiest and line.name == swing.steadiest.name %}<div class="badge">Steadiest</div>{% endif %}
+  <h3>{{ line.pretty_name }}</h3>
+  <p class="cue">{{ line.cue }}</p>
+  {% if swing.biggest and line.name == swing.biggest.name %}
   <p class="drill">{{ swing.biggest_drill }}</p>
+  {% endif %}
+  {% if line.detail %}<p class="detail">{{ line.detail }} &middot; {{ "%.0f"|format(line.confidence * 100) }}% confidence</p>{% endif %}
 </div>
-{% endif %}
+{% endfor %}
 
-{% if swing.steadiest %}
-<div class="card">
-  <h3>Steadiest part: {{ swing.steadiest.pretty_name }}</h3>
-  <p>{{ swing.steadiest.text }}</p>
-</div>
-{% endif %}
-
-<table>
-  <thead>
-    <tr><th>Fault</th><th>Value</th><th>Peak frame</th><th>Confidence</th></tr>
-  </thead>
-  <tbody>
-  {% for line in swing.lines %}
-    <tr class="{{ 'unmeasurable' if line.value is none else '' }}">
-      <td>{{ line.pretty_name }}</td>
-      <td>
-        {% if line.value is none %}not measurable
-        {% else %}{{ "%+.2f"|format(line.value) }} {{ line.unit }}{% endif %}
-      </td>
-      <td>{{ line.peak_frame if line.peak_frame is not none else "--" }}</td>
-      <td class="{{ 'confidence-low' if line.confidence < 0.5 else '' }}">{{ "%.0f"|format(line.confidence * 100) }}%</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<details>
+  <summary>Raw measurements</summary>
+  <table>
+    <thead>
+      <tr><th>Fault</th><th>Value</th><th>Peak frame</th><th>Confidence</th></tr>
+    </thead>
+    <tbody>
+    {% for line in swing.lines %}
+      <tr class="{{ 'unmeasurable-row' if line.value is none else '' }}">
+        <td>{{ line.pretty_name }}</td>
+        <td>
+          {% if line.value is none %}not measurable
+          {% else %}{{ "%+.2f"|format(line.value) }} {{ line.unit }}{% endif %}
+        </td>
+        <td>{{ line.peak_frame if line.peak_frame is not none else "--" }}</td>
+        <td class="{{ 'confidence-low' if line.confidence < 0.5 else '' }}">{{ "%.0f"|format(line.confidence * 100) }}%</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
 {% endfor %}
 
 <footer>swingcoach &middot; personal tool, not a product &middot; see PLAN.md</footer>

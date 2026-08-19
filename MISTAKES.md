@@ -409,3 +409,48 @@ aid.
 **Lesson:** "the code ran and pixels changed" is not the same acceptance bar as "a
 person can actually see this." For anything whose entire job is being looked at, the
 only real test is looking at it.
+
+### 2026-08-19 — First real user review of the M4 report: feedback text was not helpful
+
+Sent the actual owner the generated report. Three findings, all real, all useful:
+
+**Swing 0 confirmed as not a real swing** ("I just turn to face the camera and turn
+back") -- working as designed. `find_swings` surfaces every candidate and relies on
+the human to discard the wrong ones by eye (PLAN.md section 7, MISTAKES.md
+"detecting practice swings" -- deliberately not solved). This is the first real
+confirmation that design choice holds up in actual use, not just in theory.
+
+**Swing 2's top frame confirmed wrong** by the person who was actually there. Same
+already-documented open issue from the M2 session (waggle/resettle confusing
+top-of-backswing detection) -- not a new bug, but real-world corroboration that it
+matters enough to eventually fix.
+
+**The feedback text itself: "not really helpful."** The specific ask was for
+concrete coaching language ("you need to stand more straight," "bend more at the
+knees"), not numbers in invented units. Root problem: `feedback.py`'s original
+templates put the raw measurement ("Hips moved 0.28 torso-lengths toward the ball,
+peaking at frame 394") front and center as the primary sentence -- correct and
+honest, but not what a person asking "what should I do differently" wants to read
+first.
+
+**Fix:** restructured every `FaultLine` into a `cue` (an actionable, coach-toned
+sentence -- "Your hips are pushing toward the ball on the way down. Try to keep them
+back...") plus a separate `detail` (the number, now secondary, tucked into a
+collapsible `<details>` section in the report). Still 100% grounded in the same
+self-referential deviation-from-address data; this was a wording/hierarchy problem,
+not a measurement problem, so it required no new data and no new invented threshold.
+
+**Explicitly NOT done, and flagged as a real design fork:** the user's own examples
+("stand up straighter," "bend more at the knees") are a *different kind of claim*
+than anything currently measured -- they judge address posture itself against an
+implied ideal, not deviation from the golfer's own address. Every existing metric is
+self-referential by deliberate design (PLAN.md section 5, AGENTS.md hard constraint
+4: no invented thresholds). Building "your knee flex is wrong" would mean inventing
+an external reference this project was specifically built to avoid. Did not decide
+this unilaterally either way -- raised it back to the user explicitly rather than
+silently picking a side.
+
+**Lesson:** correct data in the wrong presentation register reads as "not helpful"
+even when nothing about the underlying measurement is wrong. The fix for "the
+feedback isn't helpful" was not better math -- it was better sentences over the same
+math. Don't reach for a data/model fix when the actual complaint is about voice.

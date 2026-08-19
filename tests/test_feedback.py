@@ -55,18 +55,31 @@ def test_no_biggest_when_nothing_measurable():
     fb = describe(devs)
     assert fb.biggest is None
     assert fb.biggest_drill is None
-    assert "not measurable" in fb.lines[0].text
+    assert "not measurable" in fb.lines[0].cue
+    assert fb.lines[0].detail == ""
 
 
-def test_direction_sentence_matches_sign():
+def test_direction_cue_matches_sign():
     toward = describe([_dev("early_extension", 0.4, "torso-lengths", frame=5)]).lines[0]
-    assert "toward the ball" in toward.text
+    assert "toward the ball" in toward.cue
 
     away = describe([_dev("early_extension", -0.4, "torso-lengths", frame=5)]).lines[0]
-    assert "away from the ball" in away.text
+    assert "behind the ball" in away.cue
 
 
-def test_value_rendered_as_absolute_in_text():
+def test_detail_shows_absolute_value_and_frame():
     line = describe([_dev("loss_of_posture", -12.221, "degrees", frame=7)]).lines[0]
-    assert "12.2" in line.text
-    assert "-12.2" not in line.text
+    assert "12.2" in line.detail
+    assert "-12.2" not in line.detail
+    assert "frame 7" in line.detail
+
+
+def test_cue_is_actionable_not_a_bare_measurement():
+    # The whole point of this rewrite: the cue should read like coaching
+    # advice, not "X moved Y units at frame Z" -- the number belongs in
+    # `detail`, not `cue`.
+    line = describe([_dev("head_lift", 0.5, "torso-lengths", frame=12)]).lines[0]
+    assert "torso-lengths" not in line.cue
+    assert "frame" not in line.cue
+    assert "torso-lengths" in line.detail
+    assert "frame 12" in line.detail
