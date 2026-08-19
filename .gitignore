@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Pose model — downloaded, not committed. See models/README.md.
+models/*.task
+
+# Swing footage and rendered output — large binaries, not source.
+*.mov
+*.mp4
+!tests/fixtures/**/*.mp4
+data/
+out/

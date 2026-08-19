@@ -113,35 +113,46 @@ future app port a UI project rather than a rewrite — do not erode it for conve
 def load_video(path: Path) -> tuple[list[np.ndarray], float]:
     """Frames and TRUE capture fps. See MISTAKES.md on slo-mo fps."""
 
+
 # pose.py
 @dataclass(frozen=True)
 class Landmarks:
-    xy: np.ndarray          # (n_frames, 33, 2) float32, pixels
+    xy: np.ndarray  # (n_frames, 33, 2) float32, pixels
     visibility: np.ndarray  # (n_frames, 33) float32, 0..1
+
 
 # smooth.py
 def lowpass(traces: np.ndarray, fps: float, cutoff_hz: float, order: int = 4) -> np.ndarray:
     """Zero-phase Butterworth (filtfilt). Never lfilter — it introduces lag."""
 
+
 # segment.py
 @dataclass(frozen=True)
 class Swing:
-    start: int; address: int; top: int; impact: int; end: int
+    start: int
+    address: int
+    top: int
+    impact: int
+    end: int
+
 
 def find_swings(lm: Landmarks, fps: float) -> list[Swing]: ...
+
 
 # metrics.py
 @dataclass(frozen=True)
 class Deviation:
     name: str
-    value: float | None      # None when not measurable
-    unit: str                # "shoulder-widths" | "degrees"
+    value: float | None  # None when not measurable
+    unit: str  # "shoulder-widths" | "degrees"
     peak_frame: int | None
-    confidence: float        # driven by landmark visibility
-    note: str = ""           # why it's None, when it is
+    confidence: float  # driven by landmark visibility
+    note: str = ""  # why it's None, when it is
+
 
 def measure(lm: Landmarks, swing: Swing, fps: float) -> list[Deviation]:
     """Ranked by |value| descending. Unmeasurable deviations sort last."""
+
 
 # feedback.py
 def describe(devs: list[Deviation]) -> SwingFeedback:

@@ -204,4 +204,45 @@ value is the pattern, not the narrative.
 **Lesson:** the generalizable bit, or "none — one-off."
 ```
 
-<!-- No entries yet. Nothing has been built. -->
+### 2026-08-19 — M0 spike: pose tracking holds up, but the test clip isn't pure DTL
+
+**Symptom:** none — this is a finding, not a bug. Ran MediaPipe Pose Landmarker
+(Tasks API, `pose_landmarker_full.task`) over a real swing clip and inspected the
+overlay frame by frame.
+
+**Finding 1 — pose tracking is solid.** 100% detection across all 96 frames,
+including the high-motion-blur frames right at impact. Hip, shoulder, and head
+landmarks averaged ~1.0 visibility throughout. This clears the single largest risk
+in the plan (`PLAN.md` §"Risks": "MediaPipe may not track a golfer from directly
+behind"). M0 gate passed.
+
+**Finding 2 — the clip isn't actually down-the-line.** The camera shows the golfer's
+face and front torso at address and their back at follow-through — it was positioned
+off to the side, not braced directly behind on the target line. `PLAN.md` §1 and §4
+assume pure DTL geometry (ball-direction axis roughly perpendicular to the camera).
+At an angle, early-extension and head-sway measurements pick up a foreshortening
+bias. Not a blocker — the self-calibrating `ball_dir` in §4 still gets the sign
+right — but the *magnitude* of lateral measurements will be off until capture angle
+is standardized or the geometry accounts for bearing. Revisit once there's a
+genuinely braced, on-the-line clip to compare against.
+
+**Finding 3 — wrist landmarks are the weak joint.** Left wrist averaged 0.37
+visibility, below 0.5 on 58% of frames, versus ~1.0 for hips/shoulders/head. This is
+exactly the landmark `segment.py` (§7) depends on most. Confirms the plan's existing
+call to average both wrists — but suggests that alone may not be enough; a
+hold-last-good-value fallback when both dip low is probably needed too. Revisit
+during M2 once real segmentation is running.
+
+**Finding 4 — downswing frame count didn't match the literature figure.** Top→impact
+spanned ~13 frames at the header-reported 29.1fps (~0.45s), against the ~0.25s figure
+`PLAN.md` cites from the biomechanics literature. Two explanations, not yet
+distinguished: genuinely slower swing tempo on this rep, or the fps-lying trap
+already documented above (this environment has no `ffprobe`/`exiftool` to check true
+capture metadata against the container header). Not urgent — doesn't block M1 — but
+`ingest.load_video` should still cross-check header fps against expected swing timing
+once real segmentation exists, per the existing guidance above.
+
+**Lesson:** the plan's `MISTAKES.md` entry on fps-lying was written from research,
+not measurement — this is the first real clip and it already raised a flag on
+exactly that axis. Trust the plan's *shape* (check fps against known timing) even
+when the specific mechanism isn't confirmed yet.

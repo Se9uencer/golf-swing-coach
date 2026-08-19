@@ -1,0 +1,27 @@
+[project]
+name = "swingcoach"
+version = "0.1.0"
+description = "Personal DTL golf swing analyzer. See PLAN.md."
+requires-python = ">=3.11"
+dependencies = [
+    "mediapipe>=0.10",
+    "opencv-python-headless>=4.9",
+    "numpy>=1.26",
+    "scipy>=1.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["swingcoach*"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
