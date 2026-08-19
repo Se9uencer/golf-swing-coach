@@ -5,19 +5,20 @@ is a safe reference, and section 6 for why this ranks deviations instead of
 emitting a pass/fail verdict.
 
 Search windows here use [address, impact], not [top, impact] as PLAN.md
-section 4 originally specified -- top-of-backswing detection is not yet
-reliable (MISTAKES.md, "M2 first run against real multi-swing footage").
-Using the wider window doesn't corrupt these particular metrics: during the
-backswing the pelvis and spine move, if anything, in the OPPOSITE direction
-from the downswing fault each metric is meant to catch, so the true peak
-still wins the |value|-max search. Revisit once top-of-backswing detection
-is fixed.
+section 4 originally specified. This was originally because top-of-backswing
+detection wasn't reliable; that's since been fixed (MISTAKES.md, "Top-of-
+backswing detection fixed"), but the windows here haven't been narrowed back
+to [top, impact] yet -- left as [address, impact] because it doesn't corrupt
+these particular metrics (during the backswing the pelvis and spine move, if
+anything, in the OPPOSITE direction from the downswing fault each metric is
+meant to catch, so the true peak still wins the |value|-max search either
+way) and narrowing it is a minor cleanup, not a correctness fix. Fine to do
+whenever someone gets to it.
 
 hand_path is not implemented here. PLAN.md already flagged it as the
 softest of the four metrics, "likely reduced to a purely visual trace with
-no number, or cut" -- and it's the one metric that actually needs a
-reliable top, which M2 doesn't have. Nothing to adapt around; it's simply
-not built yet.
+no number, or cut". Now that top detection works this is no longer blocked
+by segmentation -- it's simply not built yet.
 """
 
 from dataclasses import dataclass

@@ -25,8 +25,7 @@ QUIET_PERCENTILE = 25  # "quiet" = below this percentile of the WHOLE CLIP's spe
 QUIET_MARGIN = 1.5  # safety margin over that percentile, for jitter
 MIN_ADDRESS_HOLD_S = 0.3
 IMPACT_SEARCH_WINDOW_S = 0.15
-TOP_SEARCH_BACK_S = 1.5
-ADDRESS_SEARCH_BACK_S = 1.5
+ADDRESS_SEARCH_BACK_S = 1.8
 PRE_ROLL_S = 0.2
 POST_ROLL_S = 0.5
 MIN_WRIST_VISIBILITY = 0.4  # combined L+R; below this the frame is NaN, not guessed
@@ -106,29 +105,26 @@ def _smoothed_wrist_y(lm: Landmarks, fps: float) -> np.ndarray:
     return smoothed[:, 1]
 
 
-def _find_top(speed: np.ndarray, peak_idx: int, fps: float, quiet_threshold: float) -> int | None:
-    """Last local minimum of speed before the peak, below the quiet threshold."""
-    lo = max(0, peak_idx - int(TOP_SEARCH_BACK_S * fps))
-    window = speed[lo:peak_idx]
-    if len(window) < 3:
-        return None
-    minima = [
-        i
-        for i in range(1, len(window) - 1)
-        if window[i] <= window[i - 1] and window[i] <= window[i + 1] and window[i] < quiet_threshold
-    ]
-    if not minima:
-        return None
-    return lo + minima[-1]
-
-
 def _find_address(
-    speed: np.ndarray, top_idx: int, fps: float, quiet_threshold: float
+    speed: np.ndarray, peak_idx: int, fps: float, quiet_threshold: float
 ) -> int | None:
-    """End of the last sustained (>= MIN_ADDRESS_HOLD_S) quiet window before top."""
+    """End of the last sustained (>= MIN_ADDRESS_HOLD_S) quiet window before
+    the speed peak.
+
+    Searches backward from the peak directly, NOT via an intermediate
+    "top" guess. A golfer who waggles or takes a forward press before
+    actually swinging can have more than one qualifying quiet window (real
+    clip: genuine stillness at both the initial setup AND again,
+    momentarily, right before the real backswing starts) -- the one that
+    matters for "address" is whichever is closest to the swing itself, and
+    searching backward from the peak finds exactly that one directly,
+    rather than searching from a guessed top that might itself have landed
+    on the wrong quiet window. See MISTAKES.md, "top-of-backswing detection
+    is still unreliable" and its follow-up fix.
+    """
     hold_frames = int(MIN_ADDRESS_HOLD_S * fps)
-    lo = max(0, top_idx - int(ADDRESS_SEARCH_BACK_S * fps))
-    window = speed[lo:top_idx]
+    lo = max(0, peak_idx - int(ADDRESS_SEARCH_BACK_S * fps))
+    window = speed[lo:peak_idx]
     if len(window) < hold_frames:
         return None
 
@@ -145,6 +141,25 @@ def _find_address(
     if run_end is None:
         return None
     return lo + run_end
+
+
+def _find_top(wrist_y: np.ndarray, address_idx: int, peak_idx: int) -> int:
+    """Top of backswing: the highest point the hands reach (min wrist_y --
+    y increases downward) between address and the speed peak.
+
+    Mirrors _find_impact's logic (which finds the LOWEST point near the
+    peak) rather than searching for a pause in speed. A waggle or forward
+    press before the real backswing stays near address height and never
+    competes with the genuine top, which is by a wide margin the highest
+    the hands go in the whole swing -- confirmed on real footage where a
+    quiet-threshold search on speed alone picked a resettle point that the
+    frame stills showed was still an address-like pose, not arms raised.
+    See MISTAKES.md.
+    """
+    window = wrist_y[address_idx : peak_idx + 1]
+    if len(window) == 0:
+        return address_idx
+    return address_idx + int(np.argmin(window))
 
 
 def _find_impact(wrist_y: np.ndarray, peak_idx: int, fps: float) -> int:
@@ -171,7 +186,8 @@ def find_swings(lm: Landmarks, fps: float) -> list[Swing]:
     a frame the wrists genuinely weren't tracked on -- is dropped rather
     than filled in with a guessed frame index.
 
-    "Quiet" (used to find top and address) is calibrated against the whole
+    "Quiet" (used to find address; top is found separately, by hand height --
+    see _find_top) is calibrated against the whole
     clip's resting-speed floor, not a fraction of each swing's own peak --
     a fraction of peak speed is 10x too loose in practice (real clip: ~580
     px/s vs. a true stillness floor of ~10-50 px/s) and grabs noise dips
@@ -195,11 +211,11 @@ def find_swings(lm: Landmarks, fps: float) -> list[Swing]:
         if not trustworthy[peak_idx]:
             continue
 
-        top_idx = _find_top(speed, peak_idx, fps, quiet_threshold)
-        if top_idx is None or not trustworthy[top_idx]:
-            continue
-        address_idx = _find_address(speed, top_idx, fps, quiet_threshold)
+        address_idx = _find_address(speed, peak_idx, fps, quiet_threshold)
         if address_idx is None or not trustworthy[address_idx]:
+            continue
+        top_idx = _find_top(wrist_y, address_idx, peak_idx)
+        if not trustworthy[top_idx]:
             continue
         impact_idx = _find_impact(wrist_y, peak_idx, fps)
         if not trustworthy[impact_idx]:

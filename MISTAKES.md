@@ -454,3 +454,47 @@ silently picking a side.
 even when nothing about the underlying measurement is wrong. The fix for "the
 feedback isn't helpful" was not better math -- it was better sentences over the same
 math. Don't reach for a data/model fix when the actual complaint is about voice.
+
+### 2026-08-19 — Top-of-backswing detection fixed: address was wrong too, not just top
+
+Went back to fix the open top-detection issue now that a real user confirmed it
+mattered. Re-examined swing 2's raw wrist-height trace (not just speed) frame by
+frame and found the bug was bigger than previously understood: it wasn't just "top"
+that was wrong, "address" was wrong too, just in a way that had been masking itself.
+
+**What was actually happening:** this golfer settles into stillness TWICE before
+really swinging -- once at initial setup (frames 622-628), and again, at a
+measurably different hand height (89px lower, a forward press or re-set), right
+before the real backswing begins (frames 648-654). The old algorithm searched
+backward from the speed peak for *a* quiet dip, found the closer one (648-654), and
+called it "top" -- then searched backward *from that wrong top* for another quiet
+dip, found the earlier one (622-628), and called it "address". Both labels were
+wrong, shifted by one quiet-period each. The frame stills had already shown this:
+the "top" frame looked like an address pose, not arms raised -- because it basically
+was one.
+
+**Real fix:** stopped chaining top-then-address through an intermediate guess.
+`_find_address` now searches backward from the peak DIRECTLY for the last qualifying
+quiet window -- which correctly lands on 648-654, the stillness that's actually
+adjacent to the real swing. `_find_top` was rewritten from a speed-threshold search
+into a height-based search: the point of minimum wrist_y (highest hand position)
+between address and the peak -- exactly mirroring `_find_impact`'s existing,
+already-reliable logic (max wrist_y = lowest point), just inverted. A waggle or
+forward press keeps the hands near address height and can never compete with the
+genuine top, which is by a wide margin the highest the hands go in the entire swing
+-- so this needs no threshold tuning at all, unlike the old approach.
+
+Verified on real footage: swing 2 now reads address=657 (a genuine setup pose),
+top=684 (arms fully raised, club pointing back -- textbook), impact=694 (back over
+the ball). Checked swing 1 (previously correct) for regression -- still correct,
+unchanged in substance.
+
+**Lesson:** a bug diagnosed as "the top-finder is wrong" turned out to be "the
+address-finder was masking its own error by feeding a bad top into a search that
+then found a plausible-looking but wrong address." When two dependent heuristics
+chain through each other, a wrong answer in the first one can produce a
+self-consistent-looking wrong answer in the second, and the failure only becomes
+visible by going back to the raw signal (here, wrist HEIGHT, not just speed) rather
+than trying to patch the second stage in isolation. Also: this bug was invisible
+until a real person who knew what their own swing actually looked like reviewed the
+output -- neither the plot nor the frame-count sanity checks caught it.

@@ -177,10 +177,17 @@ swing peaks:  find_peaks(speed, prominence = k * median(speed),
 
 per peak:
   impact  = argmax(wrist.y) in a short window around the peak   # y is down
-  top     = last local minimum of speed before the peak, below a quiet threshold
-  address = end of the last sustained low-motion window (>= 0.3 s) before top
+  address = end of the last sustained low-motion window (>= 0.3 s) before the peak
+  top     = argmin(wrist.y) between address and the peak         # highest hand point
   start   = address - 0.2 s,  end = impact + 0.5 s   (for rendering)
 ```
+
+Address is found by searching backward from the peak directly, not through an
+intermediate top guess — a golfer who waggles or takes a forward press can have more
+than one qualifying quiet window, and only the one closest to the peak is the real
+address (MISTAKES.md, "top-of-backswing detection fixed"). Top then falls out as the
+highest point the hands reach in that window — the same logic as impact, mirrored,
+and needs no threshold at all.
 
 Pure numpy and scipy over the landmark traces. Inspectable and plottable, which
 matters more than accuracy here: a wrong threshold is a five-second fix on a plot, a
