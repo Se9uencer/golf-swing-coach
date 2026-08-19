@@ -95,9 +95,18 @@ swingcoach/
   metrics.py     the four measurements, normalization, ranking
   feedback.py    templates and drills
   render/
-    overlay.py       annotated MP4
+    video_writer.py  H.264 MP4 writer (real ffmpeg, not cv2.VideoWriter -- see MISTAKES.md)
+    overlay.py       annotated MP4, via video_writer
     velocity_plot.py wrist-speed PNG w/ detected events -- the segmentation debug view
-    report.py        self-contained HTML (wraps overlay + velocity_plot + metrics)
+    report.py        HTML report (wraps overlay + velocity_plot + metrics); two output
+                      shapes sharing one context builder -- a self-contained document for
+                      local download, and a fragment for publishing as a Claude Artifact
+    pdf.py           PDF export via headless Chromium, for sharing where HTML isn't
+                      accepted -- optional, not part of the core pipeline (needs the
+                      `pdf` extra)
+    templates/
+      report.html.jinja          full document, local download
+      report_artifact.html.jinja fragment (no doctype/html/head/body), for Artifact publish
   cli.py         the only place that parses args or touches argv
 tests/
 ```

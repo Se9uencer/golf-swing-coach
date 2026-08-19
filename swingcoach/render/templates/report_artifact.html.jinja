@@ -1,0 +1,181 @@
+<title>Swing Breakdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f8f3;
+    --fg: #1c231c;
+    --muted: #5b6558;
+    --card: #edefe6;
+    --border: #d8dcce;
+    --accent: #2f6b3a;
+    --accent-warm: #c97a1f;
+    --shadow: rgba(28, 35, 28, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12160f; --fg: #e9eae1; --muted: #9aa394; --card: #1b211a;
+      --border: #2b332a; --accent: #63b36f; --accent-warm: #e0a24b;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12160f; --fg: #e9eae1; --muted: #9aa394; --card: #1b211a;
+    --border: #2b332a; --accent: #63b36f; --accent-warm: #e0a24b;
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg); color: var(--fg); margin: 0;
+    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px; line-height: 1.55;
+  }
+  .page { max-width: 700px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+  h1, h2, h3 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 600; text-wrap: balance;
+    color: var(--fg); margin: 0;
+  }
+  h1 { font-size: 2rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.4rem; margin-top: 3rem; }
+  h3 { font-size: 1.05rem; font-weight: 500; margin: 0 0 0.5rem; }
+
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .meta {
+    color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.25rem; margin-top: 1.25rem; box-shadow: 0 1px 2px var(--shadow);
+  }
+  .panel img.plot { width: 100%; display: block; border-radius: 8px; }
+
+  h2 + .swing-meta { margin-top: 0.3rem; }
+  .swing-meta { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+  video {
+    width: 100%; border-radius: 12px; background: #000; margin-top: 1rem;
+    border: 1px solid var(--border); display: block;
+  }
+
+  .stills {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1rem;
+  }
+  .stills figure { margin: 0; }
+  .stills img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--border); }
+  .stills figcaption {
+    font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 0.35rem;
+    font-variant-numeric: tabular-nums; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  .fault {
+    border: 1px solid var(--border); border-left: 3px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.1rem; margin-top: 0.75rem; background: var(--card);
+  }
+  .fault.biggest { border-left-color: var(--accent-warm); }
+  .fault.steadiest { border-left-color: var(--accent); }
+  .fault.unmeasurable { opacity: 0.65; }
+  .fault .badge {
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    margin-bottom: 0.35rem; display: block;
+  }
+  .fault.biggest .badge { color: var(--accent-warm); }
+  .fault.steadiest .badge { color: var(--accent); }
+  .fault .cue { margin: 0; max-width: 62ch; }
+  .fault .drill { color: var(--muted); font-size: 0.9rem; margin: 0.6rem 0 0; max-width: 62ch; }
+  .fault .detail {
+    color: var(--muted); font-size: 0.78rem; margin: 0.6rem 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  details { margin-top: 1.25rem; }
+  summary {
+    cursor: pointer; color: var(--muted); font-size: 0.85rem; font-weight: 500;
+    padding: 0.25rem 0;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin-top: 0.6rem; font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .row-unmeasurable { color: var(--muted); font-style: italic; }
+  .confidence-low { color: var(--accent-warm); }
+
+  footer {
+    color: var(--muted); font-size: 0.78rem; margin-top: 3.5rem; padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+
+<div class="page">
+  <span class="eyebrow">Swing report</span>
+  <h1>{{ source_name }}</h1>
+  <div class="meta">
+    {{ n_frames }} frames &middot; {{ "%.1f"|format(fps) }} fps &middot;
+    {{ swings|length }} swing{{ "s" if swings|length != 1 else "" }} detected &middot;
+    {{ generated_at }}
+  </div>
+
+  <div class="panel">
+    <img class="plot" src="data:image/png;base64,{{ velocity_plot_b64 }}" alt="wrist speed over the session, with detected swing events marked">
+  </div>
+
+  {% for swing in swings %}
+  <h2>Swing {{ swing.index }}</h2>
+  <div class="swing-meta">{{ "%.1f"|format(swing.start_s) }}s&ndash;{{ "%.1f"|format(swing.end_s) }}s</div>
+
+  {% if swing.video_b64 %}
+  <video controls playsinline muted loop>
+    <source src="data:video/mp4;base64,{{ swing.video_b64 }}" type="video/mp4">
+  </video>
+  {% endif %}
+
+  <div class="stills">
+    <figure><img src="data:image/png;base64,{{ swing.address_frame_b64 }}" alt="setup, frame {{ swing.address_idx }}"><figcaption>Setup &middot; frame {{ swing.address_idx }}</figcaption></figure>
+    <figure><img src="data:image/png;base64,{{ swing.top_frame_b64 }}" alt="top of backswing, frame {{ swing.top_idx }}"><figcaption>Top &middot; frame {{ swing.top_idx }}</figcaption></figure>
+    <figure><img src="data:image/png;base64,{{ swing.impact_frame_b64 }}" alt="impact, frame {{ swing.impact_idx }}"><figcaption>Impact &middot; frame {{ swing.impact_idx }}</figcaption></figure>
+  </div>
+
+  {% for line in swing.lines %}
+  <div class="fault {{ 'biggest' if swing.biggest and line.name == swing.biggest.name else '' }} {{ 'steadiest' if swing.steadiest and line.name == swing.steadiest.name else '' }} {{ 'unmeasurable' if line.value is none else '' }}">
+    {% if swing.biggest and line.name == swing.biggest.name %}<span class="badge">Biggest change</span>{% endif %}
+    {% if swing.steadiest and line.name == swing.steadiest.name %}<span class="badge">Steadiest</span>{% endif %}
+    <h3>{{ line.pretty_name }}</h3>
+    <p class="cue">{{ line.cue }}</p>
+    {% if swing.biggest and line.name == swing.biggest.name %}
+    <p class="drill">{{ swing.biggest_drill }}</p>
+    {% endif %}
+    {% if line.detail %}<p class="detail">{{ line.detail }} &middot; {{ "%.0f"|format(line.confidence * 100) }}% confidence</p>{% endif %}
+  </div>
+  {% endfor %}
+
+  <details>
+    <summary>Raw measurements</summary>
+    <table>
+      <thead><tr><th>Fault</th><th>Value</th><th>Peak frame</th><th>Confidence</th></tr></thead>
+      <tbody>
+      {% for line in swing.lines %}
+        <tr class="{{ 'row-unmeasurable' if line.value is none else '' }}">
+          <td>{{ line.pretty_name }}</td>
+          <td>{% if line.value is none %}not measurable{% else %}{{ "%+.2f"|format(line.value) }} {{ line.unit }}{% endif %}</td>
+          <td>{{ line.peak_frame if line.peak_frame is not none else "--" }}</td>
+          <td class="{{ 'confidence-low' if line.confidence < 0.5 else '' }}">{{ "%.0f"|format(line.confidence * 100) }}%</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+
+  <footer>Built with a phone camera and MediaPipe pose tracking &middot; every measurement compares you only to your own setup</footer>
+</div>

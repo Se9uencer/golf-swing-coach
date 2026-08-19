@@ -15,6 +15,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5"]
+# PDF export (render/pdf.py) -- not needed for the core pipeline, only for
+# sharing a report where HTML isn't accepted. Needs a Chromium binary that
+# playwright's own `playwright install` manages; not required otherwise.
+pdf = ["playwright>=1.40"]
 
 [build-system]
 requires = ["setuptools>=68"]

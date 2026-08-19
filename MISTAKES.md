@@ -534,3 +534,41 @@ the actual codec against what browsers are known to support -- not "did my own
 tooling read it back successfully." This is the same shape of mistake as the ghost-
 color one: pixels being technically present/correct is not the acceptance bar for
 something that has to work for someone else, on their own device.
+
+### 2026-08-19 — publishing a report as a shareable link instead of a file
+
+User wanted a link they could actually send people (LinkedIn won't accept an .html
+upload, and a PDF can't carry the video). Landed on publishing the report as a Claude
+Artifact -- a real webpage with a URL -- instead. Two things worth remembering:
+
+**The Artifact tool's asset-store mechanism (`upload_asset`, for large media without
+inlining it as base64) is not available in this environment.** Tried it directly
+rather than assuming: `store_unavailable` -- "this asset route is not served on this
+path yet." Confirmed independently by the `artifact-capabilities` skill's own
+authoritative capability list, which doesn't include `assets` among what's actually
+grantable here. Video went back to base64-embedded, same as the local HTML report.
+Fine for now (a 2-swing report came in at 10MB, comfortably under the 16MB artifact
+cap) but this caps how large a session's report can be before hitting that limit --
+each swing's embedded video adds roughly 1-2MB. A session with 5-6 swings could get
+close. Not solved; just flagged, since it'll matter the moment someone sends in a
+longer bucket-of-balls session.
+
+**A report meant for other people needed a different HTML shape, not just different
+styling.** The Artifact tool expects a fragment (title + style + body content) and
+supplies its own document shell -- publishing the existing full-document
+`report.html.jinja` (its own doctype/html/head/body) would have produced invalid
+nested markup. Built `report_artifact.html.jinja` as a sibling template sharing the
+same context data (refactored `report.py` to build that context once, in
+`_build_context`, rather than duplicating the per-swing assembly loop for two output
+paths). Took the opportunity to give it a real designed identity for this session
+too -- a palette actually grounded in the subject (fairway green, flag amber, chalky
+scorecard-paper neutral) instead of the generic gray theme good enough for a
+personal-only tool, since this version is now something a stranger will actually
+look at.
+
+**Lesson:** "share it with someone else" is not a rendering-target change, it's
+frequently a real requirements change -- different embedding rules, different size
+constraints, sometimes a different aesthetic bar entirely. Reusing the data layer and
+building a second thin template was the right call; trying to force one template to
+serve both a local file and a hosted fragment would have meant fighting the file
+format's actual constraints instead of designing for them.
