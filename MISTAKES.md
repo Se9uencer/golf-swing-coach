@@ -572,3 +572,42 @@ constraints, sometimes a different aesthetic bar entirely. Reusing the data laye
 building a second thin template was the right call; trying to force one template to
 serve both a local file and a hosted fragment would have meant fighting the file
 format's actual constraints instead of designing for them.
+
+### 2026-08-22 — a real swing found zero swings: `ADDRESS_SEARCH_BACK_S` didn't reach back far enough
+
+**Symptom:** Ran `segment` on a new real DTL range clip (215 frames, 29.6fps container
+header, one clean full swing). Pose tracking was solid (215/215 frames detected), and
+the wrist-speed plot showed one obvious, unambiguous swing peak (~3860px/s against a
+~140px/s clip median) -- but `find_swings` reported 0 swings.
+
+**Cause:** `_find_address` searches backward from the speed peak for the last
+qualifying quiet run, but only within `ADDRESS_SEARCH_BACK_S = 1.8` seconds of it. On
+this clip the true address-to-peak gap was ~1.93s -- just outside that window. So the
+search never saw the golfer's genuine 10-frame pre-swing stillness (frames 5-14) at
+all; the only quiet run inside its truncated window was the brief top-of-backswing
+pause (frames 52-57, 6 frames), which is shorter than `MIN_ADDRESS_HOLD_S` (8 frames
+at this fps) and so didn't qualify either. Confirmed by hand: printed per-frame wrist
+speed against both quiet thresholds, and pulled frame stills at 5-frame intervals
+across the whole clip to check the visual swing phases (address / takeaway / top /
+downswing / impact / finish) against the frame indices the numbers implied. They
+matched cleanly once the window was widened.
+
+**Fix:** `ADDRESS_SEARCH_BACK_S` raised from 1.8s to 2.5s -- enough margin over the
+measured 1.93s gap to allow for a slower golfer too, while staying close enough to
+`MIN_SWING_SEPARATION_S` (2.0s) that in a multi-swing clip it's unlikely to reach past
+a previous swing's own peak. Verified: `find_swings` now reports 1 swing with
+address=15, top=54, impact=71 -- all three match the visually-identified frames from
+the still-frame walkthrough. Full report generated cleanly afterward (4 metrics, all
+100% confidence, sane-looking address/top/impact stills and overlay). `ruff` and the
+full test suite still pass.
+
+**Lesson:** this constant was tuned for the 240fps slo-mo capture spec (`PLAN.md`
+§3), where the same real-time margin would correspond to many more frames of
+headroom; nothing in the code scaled it for a genuinely-30fps clip the way
+`_wrist_cutoff_hz` already does for the smoothing cutoff (see the M2 entry above). A
+constant expressed in seconds isn't automatically fps-safe just because it isn't
+expressed in frames -- what actually needs checking is whether the *real-world
+duration* it assumes still holds at the capture rate and swing tempo in hand. One
+real clip is not the "~50 real swings" `segment.py`'s own header docstring asks for
+before retuning -- this value should be revisited again once more clips exist, rather
+than treated as settled.
