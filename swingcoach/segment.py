@@ -25,7 +25,13 @@ QUIET_PERCENTILE = 25  # "quiet" = below this percentile of the WHOLE CLIP's spe
 QUIET_MARGIN = 1.5  # safety margin over that percentile, for jitter
 MIN_ADDRESS_HOLD_S = 0.3
 IMPACT_SEARCH_WINDOW_S = 0.15
-ADDRESS_SEARCH_BACK_S = 1.8
+# Real address-to-peak gap on a genuine ~30fps range swing measured ~1.93s (2026-08-22
+# clip) -- 1.8s missed it entirely and made _find_address fall back to the brief
+# top-of-backswing pause instead, which was too short to qualify. 2.5s gives margin
+# without reaching much past MIN_SWING_SEPARATION_S, keeping the odds low of a search
+# window bleeding into a previous swing's own peak in a multi-swing clip. See
+# MISTAKES.md.
+ADDRESS_SEARCH_BACK_S = 2.5
 PRE_ROLL_S = 0.2
 POST_ROLL_S = 0.5
 MIN_WRIST_VISIBILITY = 0.4  # combined L+R; below this the frame is NaN, not guessed
