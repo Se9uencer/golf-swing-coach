@@ -14,11 +14,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=8.0", "ruff>=0.5", "httpx>=0.27"]
 # PDF export (render/pdf.py) -- not needed for the core pipeline, only for
 # sharing a report where HTML isn't accepted. Needs a Chromium binary that
 # playwright's own `playwright install` manages; not required otherwise.
 pdf = ["playwright>=1.40"]
+# Public web front end (swingcoach/web/) -- PLAN.md section 10. Optional
+# because the CLI pipeline has no business depending on a web framework.
+web = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -29,6 +32,7 @@ include = ["swingcoach*"]
 
 [tool.setuptools.package-data]
 swingcoach = ["render/templates/*.jinja"]
+"swingcoach.web" = ["templates/*.html", "static/*"]
 
 [tool.ruff]
 line-length = 100

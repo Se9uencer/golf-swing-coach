@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Processing -- swingcoach{% endblock %}
+{% block content %}
+  <meta http-equiv="refresh" content="5">
+  <h1>{{ "Processing your swing" if status == "processing" else "Queued" }}</h1>
+  <p>
+    {% if status == "processing" %}
+      Running pose estimation and building your report. This can take a few
+      minutes depending on clip length -- this page refreshes on its own.
+    {% else %}
+      Waiting for a free processing slot. This page refreshes on its own.
+    {% endif %}
+  </p>
+{% endblock %}

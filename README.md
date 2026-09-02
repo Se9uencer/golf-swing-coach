@@ -1,11 +1,15 @@
 # swingcoach
 
-A personal down-the-line golf swing analyzer. Point a phone at yourself from behind,
-hit some balls, and get back an HTML report: your swing with a skeleton drawn on it,
-plus a short note on what changed between your address position and the swing itself.
+A down-the-line golf swing analyzer. Point a phone at yourself from behind, hit some
+balls, and get back an HTML report: your swing with a skeleton drawn on it, plus a
+short note on what changed between your address position and the swing itself.
 
-It's a local Python pipeline for one user, not a product. See `PLAN.md` for the
-reasoning behind that and `AGENTS.md` for the hard constraints it's built on.
+It's a Python pipeline, not a product — no competitive positioning, no
+monetization, no retention metrics. See `PLAN.md` for the reasoning behind that and
+`AGENTS.md` for the hard constraints it's built on. Use it two ways:
+
+- **CLI**, locally, on your own machine — see [Usage](#usage) below.
+- **Web**, hosted, no install — see [Web](#web) below. Same pipeline either way.
 
 ## Setup
 
@@ -56,6 +60,50 @@ seeing why a swing was or wasn't found. `overlay` renders just the skeleton vide
 no metrics. All three accept `--cache pose.npz` to skip re-running pose estimation
 (the slow step, ~10fps on CPU) on repeat runs against the same clip.
 
+## Web
+
+A hosted version of the same pipeline: upload a clip through a page instead of
+running the CLI. See PLAN.md §10 for why this exists and how it's built.
+
+- No account, no sign-up. Upload a `.mov`/`.mp4`, wait (pose estimation takes a
+  couple of minutes for a typical clip), get a report link.
+- The report link is private (an unguessable id) but not password-protected —
+  don't share it anywhere you wouldn't share the video itself.
+- Video and report are deleted automatically ~48h after processing. There's no
+  account to notify when that happens, so save/download anything you want to keep.
+- Same caps apply as anywhere else CPU-bound and public: upload size, clip length,
+  and uploads-per-hour are capped (limits are shown on the upload page).
+
+Run it locally the same way you'd run any FastAPI app:
+
+```
+pip install -e ".[dev,web]"
+uvicorn swingcoach.web.app:app --reload
+```
+
+Then open `http://127.0.0.1:8000`.
+
+### Deploy
+
+The included `render.yaml` deploys this as one [Render](https://render.com) web
+service — no separate worker or database, see PLAN.md §10 for why one process is
+enough here. No third-party API keys or secrets are needed.
+
+1. Push this repo (with `render.yaml` and `Dockerfile` at the root) to GitHub.
+2. In the Render dashboard: **New** -> **Blueprint**, point it at the repo.
+   Render reads `render.yaml` and provisions the service and its persistent disk.
+3. Persistent disks need a paid plan (`render.yaml` requests `starter`, currently
+   Render's cheapest plan with disk support) — free-tier services have no disk.
+4. Deploy. The pose model (9.4 MB) is fetched during the Docker build, so first
+   deploy takes a few minutes longer than a code-only change would.
+5. Once live, the service's `.onrender.com` URL (or a custom domain you attach) is
+   the link anyone can use.
+
+Everything is configurable via the `SWINGCOACH_*` environment variables in
+`swingcoach/web/config.py` (upload caps, rate limit, retention window, worker
+concurrency) if the defaults don't fit — set overrides as Render environment
+variables, no code change needed.
+
 ## Development
 
 ```
@@ -78,6 +126,8 @@ swingcoach/
   feedback.py    templates and drills
   render/        overlay video, velocity plot, HTML report, PDF export
   cli.py         the only place that parses args
+  web/           optional FastAPI front end -- upload page, in-process job
+                 queue, same pipeline as the CLI (PLAN.md §10)
 tests/
 ```
 
