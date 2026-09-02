@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}swingcoach{% endblock %}
+{% block content %}
+  <h1>Get your down-the-line swing analyzed</h1>
+  <p>
+    Upload a swing video and get back an annotated report: your swing with a
+    skeleton drawn on it, key frames at address/top/impact, and a note on
+    what changed between your setup and your swing. No pass/fail scores --
+    just what moved, ranked by how much.
+  </p>
+
+  <h2>Capture it right</h2>
+  <ul>
+    <li><strong>Camera behind you, on the target line</strong>, at roughly hand height. This is the only supported angle.</li>
+    <li><strong>240fps slo-mo</strong> if your phone supports it, landscape, braced so it doesn't move mid-clip.</li>
+    <li><strong>Full body in frame</strong>, with headroom for the club at the top of the swing.</li>
+    <li>Hit as many balls as you like in one clip -- swings are split out automatically.</li>
+  </ul>
+
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="video" accept=".mov,.mp4,.m4v,video/quicktime,video/mp4" required>
+    <button type="submit">Upload &amp; analyze</button>
+  </form>
+
+  <p class="fine-print">
+    Max {{ max_upload_mb }}MB, {{ max_duration_s }}s per clip.
+    Limit {{ rate_limit_per_hour }} uploads/hour per IP.
+    Your video and report are auto-deleted {{ expiry_hours }}h after processing --
+    the report link isn't listed anywhere, so keep it if you want to come back to it.
+  </p>
+{% endblock %}

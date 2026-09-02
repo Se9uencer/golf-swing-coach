@@ -1,0 +1,21 @@
+# Render Blueprint. Deploy: render.com -> New -> Blueprint -> point at this
+# repo. See README.md "Deploy" section for the full walkthrough.
+#
+# One service, not a web+worker+Redis split: the job queue runs in-process
+# (swingcoach/web/jobs.py) so the uploaded video and the report it produces
+# never need to cross between services -- see that module's docstring for
+# why (Render disks attach to a single service, not a shared one).
+services:
+  - type: web
+    name: swingcoach
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter # persistent disks require a paid plan; free tier has none
+    healthCheckPath: /healthz
+    disk:
+      name: swingcoach-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: SWINGCOACH_STORAGE_DIR
+        value: /data

@@ -1,0 +1,12 @@
+.git
+.gitignore
+tests/
+data/
+models/*.task
+*.mov
+*.mp4
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

@@ -9,13 +9,19 @@ Read this file, then `PLAN.md` (what we're building and why), then `MISTAKES.md`
 
 ## What this is
 
-A personal tool, for one user. Phone goes on the ground behind the golfer, they hit
+At its core, a personal tool: phone goes on the ground behind the golfer, they hit
 five balls, and afterwards they get the swing back with a skeleton drawn on it plus
 a short written note about what changed between their setup position and their swing.
 
-It is not a product. There is no user base, no monetization, no retention target. The
-only success criterion is whether the owner looks at the output and learns something
-true about their swing. Optimize for **inspectability and honesty**, not features.
+As of the public web front end (`swingcoach/web/`, PLAN.md section 10), anyone can
+run that same pipeline against their own clip through a hosted page instead of the
+CLI. That is a deliberate, documented reversal of the original "no app, no server,
+no cloud" stance (see constraint 6 below) — not scope creep. It changes how the
+pipeline is invoked, not what it does or how honest it is about what it finds: no
+monetization, no accounts, no retention metrics, no analytics beyond what abuse
+control requires. The only success criterion is still whether the person looking at
+a report learns something true about their swing. Optimize for **inspectability and
+honesty**, not features.
 
 ---
 
@@ -40,7 +46,16 @@ around it.
 5. **No LLM in the feedback path.** Feedback text comes from hand-written templates.
    A model writing coaching prose over noisy measurements produces confident,
    fluent, unfalsifiable wrong answers.
-6. **No app, no server, no cloud.** Local Python pipeline, files in and files out.
+6. ~~No app, no server, no cloud.~~ **Overridden 2026-09-02.** The CLI pipeline
+   itself is still local, I/O-free-core Python — that part didn't change. What
+   changed: `swingcoach/web/` adds an optional FastAPI front end (deployed via
+   `render.yaml`) so people other than the owner can run the same pipeline on
+   their own clip without installing Python. This was a deliberate decision, not
+   a quiet reversal — see PLAN.md section 10 for the reasoning and the tradeoffs
+   (in-memory job state, single-instance, no accounts) that came with it. Do not
+   let this crack the door open for the things it doesn't imply: no telemetry
+   beyond abuse control, no accounts, no monetization, and constraints 1-5 and 7
+   apply to every request the web front end serves exactly as they do to the CLI.
 7. **Never fabricate a measurement to fill a slot.** If a landmark's visibility is
    too low or an event wasn't detected, the metric is `None` and the report says so.
    A missing number is fine; a made-up one poisons the whole tool.

@@ -4,9 +4,11 @@ A personal tool. I set my phone up behind me, hit five balls, and afterwards get
 swing back with a skeleton drawn on it and a short written note about what changed
 between my setup position and my swing.
 
-Not a product. One user. No competitive positioning, no monetization, no retention
-metrics. The only success criterion is whether I look at the output and learn
-something true about my swing.
+Not a product. No competitive positioning, no monetization, no retention metrics. The
+only success criterion is whether the person looking at a report learns something
+true about their swing — originally always me, and as of §10 optionally anyone who
+uploads a clip through the hosted page. That page is a delivery mechanism for the
+same pipeline, not a pivot into building a product around it.
 
 See `AGENTS.md` for conventions and module contracts, `MISTAKES.md` for the traps
 already ruled out and the ones waiting in the implementation.
@@ -230,6 +232,71 @@ browser, readable on a phone in the car after the range.
 
 The velocity plot is not decoration — it is how a bad segmentation gets diagnosed in
 five seconds instead of five minutes. Keep it working.
+
+---
+
+## 10. Public web front end
+
+Everything above (§1-9) describes the analysis pipeline, and none of it changed to
+build this. What changed is how the pipeline gets invoked: alongside the CLI, anyone
+can now upload a clip through a hosted page and get the same report back, without
+installing Python or the pose model. This overrides AGENTS.md hard constraint 6
+("no app, no server, no cloud") deliberately — that override is recorded there, this
+section is the reasoning and the tradeoffs.
+
+**Why now.** The tool being worth sharing doesn't require it to become a product —
+no accounts, no monetization, no retention target, same as §"What this is" in
+AGENTS.md. It requires only a way for someone other than the owner to run the
+pipeline on their own clip. A hosted upload page is the smallest thing that does
+that.
+
+**Architecture: one process, not web+worker+Redis.** Pose estimation is slow
+(~10fps on CPU), so a multi-second upload can take minutes to process — too long to
+hold open an HTTP request for, especially under concurrent public traffic. The
+obvious shape is a web service plus a separate background worker connected by a job
+queue (Redis + RQ, say). That shape doesn't fit Render's hosting model here: Render
+persistent disks attach to a single service, not a shared one, and the uploaded
+video has to get from the request handler to whatever processes it. Splitting into
+two services would mean adding S3-compatible object storage just to hand a file
+across that boundary — real infrastructure, for a tool with no revenue behind it, to
+solve a problem a single process doesn't have. Instead: one FastAPI service
+(`swingcoach/web/app.py`) runs a bounded in-process queue
+(`swingcoach/web/jobs.py`) — a `queue.Queue` feeding one or more daemon worker
+threads in the same process, same disk. An upload returns immediately with a job id;
+the status page polls (plain `<meta http-equiv="refresh">`, no JavaScript) until the
+report is ready.
+
+**Tradeoff this accepts:** job status lives in memory, not a database. If the
+service restarts mid-job, that job's status is gone — the uploaded file survives on
+disk until the cleanup sweep expires it, but there's no way to resume or resurrect
+the job record, and no accounts to notify. Acceptable for a v1 with no SLA. Revisit
+(real job persistence, horizontal scaling, S3 storage) only if traffic actually
+demands it — don't build that ahead of needing it.
+
+**Privacy: private link, auto-expiring.** Uploaded video is recognizable footage of
+real people. Every report gets an unguessable job id (uuid4) as its only access
+control — nothing is listed, searchable, or indexed. The uploaded video itself is
+deleted as soon as its report is generated (the report already carries everything
+from it — overlay video, key-frame stills — that a viewer needs); the report itself
+is deleted `SWINGCOACH_EXPIRY_HOURS` (default 48h) after last being written, by a
+periodic sweep (`swingcoach/web/storage.py:sweep_expired`) rather than an
+external cron job, for the same single-process reason as the queue.
+
+**Abuse control.** A public, anonymous upload endpoint in front of a CPU-bound
+pipeline is a standing invitation to run up someone's compute bill for free. Three
+blunt levers, no CAPTCHA for v1: a hard cap on upload size and clip duration
+(`SWINGCOACH_MAX_UPLOAD_BYTES`, `SWINGCOACH_MAX_DURATION_S` — these also bound
+worst-case processing time per job, not just bandwidth), a per-IP rate limit
+(`SWINGCOACH_RATE_LIMIT_PER_HOUR`, in-memory — correct for the single-instance
+deployment this ships with, weaker under horizontal scaling), and a hard cap on
+total queue depth (`SWINGCOACH_MAX_QUEUE_DEPTH`) so a botnet spread across many IPs
+still can't pile up unbounded work.
+
+**What stayed unchanged.** The pipeline itself: constraints 1-5 and 7 in AGENTS.md
+apply identically whether a request comes from the CLI or the web form. No LLM
+enters the feedback path because a request came from a stranger instead of the
+owner. No invented thresholds. A missing measurement is still `None`, reported as
+such, never fabricated to fill the web page's slot.
 
 ---
 
